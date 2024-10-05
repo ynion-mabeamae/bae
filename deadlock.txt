@@ -1,0 +1,52 @@
+# Define two locks objects								
+$lock1 = New-Object Object						
+$lock2 = New-Object Object						
+
+# Function to simulate a deadlock					 
+function Deadlock-Simulation {						
+  param (								
+    [Parameter(Mandatory=$true)]					
+    [String]$ThreadName,
+
+    [Parameter(Mandatory=$true)]
+    [Object]$FirstLock,
+
+    [Parameter(Mandatory=$true)]
+    [Object]$SecondLock
+  )
+
+  First {
+  Write-Host "${ThreadName}:Attempting to acquire first lock..."		
+  [System.Threading.Monitor]::Enter($FirstLock)
+  Write-Host "${ThreadName}:Acquired first lock."
+
+  Start-Sleep -Seconds 1
+
+  Write-Host "${ThreadName}:Attempting to acquire second lock..."
+  [System.Threading.Monitor]::Enter($SecondLock)
+  Write-Host "${ThreadName}:Acquired second lock."
+  
+  #Simulate work
+  Start-Sleep -Seconds 1
+  }
+
+# Release locks
+  [System.Threading.Monitor]::Exit($SecondLock)
+  [System.Threading.Monitor]::Exit($FirstLock)
+}
+
+# Start two threads that will cause a deadlock
+$thread1 = New-Object System.Threading.Thread([Threading.ThreadStart] {
+   Deadlock-Simulation -ThreadName "Thread 1" -FirstLock $lock1 -SecondLock $lock2
+})
+$thread2 = New-Object System.Threading.Thread([Threading.ThreadStart]{
+   Deadlock-Simulation -ThreadName "Thread 2" -FirstLock $lock2 -SecondLock $lock1
+})
+
+# Start the threads
+$thread1.Start()
+$thread2.Start()
+
+# Wait for threads to complete
+$thread1.Join()
+$thread2.Join()
